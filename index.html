@@ -1,448 +1,433 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Camera, FileText, MoreVertical, AlertTriangle, Zap, ArrowLeft, ArrowRight as ArrowRightIcon } from 'lucide-react';
-
-// --- HELPER: Load jsQR Library ---
-const useJsQR = () => {
-  const [libLoaded, setLibLoaded] = useState(false);
-  useEffect(() => {
-    if (window.jsQR) {
-      setLibLoaded(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
-    script.async = true;
-    script.onload = () => setLibLoaded(true);
-    document.body.appendChild(script);
-  }, []);
-  return libLoaded;
-};
-
-// --- COMPONENTS (Dipisah agar keyboard tidak menutup/reset saat mengetik) ---
-
-// 1. HOME SCREEN (Input & Buttons)
-const HomeScreen = ({ urlInput, setUrlInput, handleStart, goToScan, onGalleryScan }) => {
-  const fileInputRef = useRef(null);
-
-  const triggerFileSelect = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Hidden File Input for Gallery Access */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={onGalleryScan} 
-        accept="image/*" 
-        className="hidden" 
-      />
-
-      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-gray-200 to-transparent -z-10 opacity-50" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }}></div>
-
-      <div className="w-full max-w-md bg-white/90 backdrop-blur-sm p-6 rounded-lg shadow-sm z-10">
-        <div className="mb-8 mt-10">
-          <label className="block text-sm font-medium text-gray-700 mb-1 sr-only">Server Address</label>
-          <input
-            type="text"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="Masukkan IP address/alamat server"
-            autoComplete="off"
-            className="w-full border-b border-gray-400 py-2 px-1 bg-transparent text-gray-800 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
-          />
-        </div>
-
-        <div className="space-y-3">
-          <button 
-            onClick={handleStart}
-            className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95"
-          >
-            <span className="flex items-center ml-4">LANJUTKAN</span>
-            <ArrowRight className="w-5 h-5 mr-2" />
-          </button>
-
-          <button 
-             onClick={goToScan}
-             className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95"
-          >
-              <span className="flex items-center text-sm uppercase ml-4">Scan QR Code Alamat Server</span>
-              <Camera className="w-5 h-5 mr-2" />
-          </button>
-
-          <button 
-            onClick={triggerFileSelect}
-            className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95"
-          >
-              <span className="flex items-center text-sm uppercase ml-4">Scan QR Code Dari Gallery</span>
-              <FileText className="w-5 h-5 mr-2" />
-          </button>
-        </div>
-
-        <div className="mt-12 border border-black p-4 text-sm text-gray-800 leading-relaxed font-medium">
-          <p className="font-bold mb-1">Petunjuk :</p>
-          <ol className="list-decimal pl-4 space-y-1">
-            <li>Jangan menggunakan url yang dibuat pendek (url shortener)</li>
-            <li>Bila membuat qrcode di website qrcode generator, pilih yang freetext bukan url dan jangan disertakan http/https</li>
-          </ol>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 2. ERROR VIEW (Tampilan Error Android)
-const ErrorView = ({ activeUrl }) => (
-  <div className="flex flex-col p-4 pt-8 bg-white h-full font-sans">
-    <div className="mb-4">
-      <svg className="w-16 h-16 text-[#8ABD4C]" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M17.5,12c-0.8,0-1.5,0.7-1.5,1.5S16.7,15,17.5,15S19,14.3,19,13.5S18.3,12,17.5,12z M6.5,12C5.7,12,5,12.7,5,13.5 S5.7,15,6.5,15S8,14.3,8,13.5S7.3,12,6.5,12z M19.6,7.5l1.6-2.8l-1.1-0.6l-1.7,2.8C16.8,6.3,14.5,6,12,6s-4.8,0.3-6.5,1L3.9,4.1 L2.8,4.7l1.6,2.8C2.5,8.8,1.2,10.8,1,13h22C22.8,10.8,21.5,8.8,19.6,7.5z"/>
-      </svg>
-    </div>
-    <h1 className="text-2xl font-bold text-black mb-4">Halaman web tidak tersedia</h1>
-    <p className="text-gray-800 mb-6">
-      Halaman web di <span className="font-bold">{activeUrl}</span> tidak dapat dimuat karena:
-    </p>
-    <p className="text-gray-600 text-sm uppercase font-medium">
-      net::ERR_NAME_NOT_RESOLVED
-    </p>
-  </div>
-);
-
-// 3. SCAN SCREEN (Real Camera)
-const ScanScreen = ({ onBack, onScanSuccess, libLoaded }) => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!libLoaded) return;
-
-    let stream = null;
-    let animationFrameId;
-
-    const startCamera = async () => {
-      try {
-        const constraints = { video: { facingMode: "environment" } };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute("playsinline", true); 
-          videoRef.current.play();
-          requestAnimationFrame(tick);
-        }
-      } catch (err) {
-        console.error("Camera Error:", err);
-        setError("Tidak dapat mengakses kamera. Pastikan izin diberikan.");
-      }
-    };
-
-    const tick = () => {
-      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
-
-        if (code && code.data) {
-             if (stream) stream.getTracks().forEach(track => track.stop());
-             onScanSuccess(code.data);
-             return;
-        }
-      }
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    startCamera();
-
-    return () => {
-      if (stream) stream.getTracks().forEach(track => track.stop());
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [libLoaded, onScanSuccess]);
-
-  return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-between py-6">
-      <div className="w-full flex justify-between px-4 z-20">
-         <button onClick={onBack} className="text-white p-2">
-           <ArrowLeft className="w-6 h-6" />
-         </button>
-         <button className="bg-[#8ABD4C] rounded-full p-2">
-            <Zap className="w-5 h-5 text-white fill-current" />
-         </button>
-      </div>
-  
-      <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
-          {error ? (
-              <div className="text-white text-center px-6">
-                  <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-2" />
-                  <p>{error}</p>
-              </div>
-          ) : (
-              <>
-                <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline></video>
-                <canvas ref={canvasRef} className="hidden"></canvas>
-                <div className="relative z-10 w-64 h-64 border-2 border-white/50 bg-transparent flex items-center justify-center overflow-hidden shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-[#8ABD4C]"></div>
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-[#8ABD4C]"></div>
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-[#8ABD4C]"></div>
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-[#8ABD4C]"></div>
-                    <div className="w-full h-[2px] bg-red-500 shadow-[0_0_4px_2px_rgba(255,0,0,0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
-                    <div className="absolute right-4 top-1/2 w-1 h-1 bg-yellow-400 rounded-full opacity-70"></div>
-                </div>
-              </>
-          )}
-      </div>
-      <div className="relative z-20 mt-4">
-          <p className="text-white text-sm tracking-wide">Memindai kode qr...</p>
-      </div>
-      <style>{`
-        @keyframes scan {
-          0% { transform: translateY(-100px); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(100px); opacity: 0; }
-        }
-      `}</style>
-    </div>
-  );
-};
-
-// 4. EXIT MODAL
-const ExitConfirmationModal = ({ onConfirm, onCancel }) => (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
-      <div className="bg-[#49A773] px-4 py-3 flex items-center">
-        <AlertTriangle className="text-white w-5 h-5 mr-2" />
-        <h3 className="text-white font-semibold tracking-wide">Konfirmasi</h3>
-      </div>
-      <div className="p-6">
-        <p className="text-gray-700 text-lg font-medium text-center">
-          Apakah anda yakin ingin keluar dari ujian?
-        </p>
-      </div>
-      <div className="flex border-t border-gray-200">
-        <button onClick={onCancel} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 transition-colors border-r border-gray-200">TIDAK</button>
-        <button onClick={onConfirm} className="flex-1 py-3 text-[#49A773] font-bold hover:bg-green-50 transition-colors">YA</button>
-      </div>
-    </div>
-  </div>
-);
-
-// --- MAIN APPLICATION COMPONENT ---
-
-const ExambroApp = () => {
-  const libLoaded = useJsQR();
-
-  const [currentScreen, setCurrentScreen] = useState('home');
-  const [urlInput, setUrlInput] = useState('');
-  const [activeUrl, setActiveUrl] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-
-  const iframeRef = useRef(null);
-  const audioRef = useRef(new Audio('https://files.catbox.moe/duh43x.m4a'));
-
-  // --- SINGLE SOURCE OF TRUTH (Locking Page Logic) ---
-  // Apapun caranya (Ketik, Scan Kamera, Scan File), semua memanggil fungsi ini.
-  const processUrlAndStart = (rawUrl) => {
-      let formattedUrl = rawUrl.trim();
-      if (!formattedUrl) return;
-
-      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
-        formattedUrl = 'http://' + formattedUrl;
-      }
-      
-      setUrlInput(rawUrl);
-      setActiveUrl(formattedUrl);
-      setLoadError(false);
-      setIsLoading(true);
-      
-      // Attempt Fullscreen for "Locking" effect
-      try {
-        if (document.documentElement.requestFullscreen) {
-            // FIX: Tambahkan .catch() untuk menangani jika browser menolak fullscreen
-            document.documentElement.requestFullscreen().catch((err) => {
-                console.log("Fullscreen request was blocked or denied (normal behavior in some frames):", err);
-            });
-        }
-      } catch (e) {
-          // Ignore sync errors
-      }
-
-      // GO TO LOCKING PAGE (BROWSER)
-      setCurrentScreen('browser');
-
-      // Loading Simulation
-      setTimeout(() => {
-        setIsLoading(false);
-        // Error simulation (Exambro Logic)
-        if (rawUrl.includes('/r/') || rawUrl.length < 5) {
-          setLoadError(true);
-        }
-      }, 1500);
-  };
-
-  const handleStart = () => {
-    if (!urlInput.trim()) {
-      alert("Mohon masukkan alamat server.");
-      return;
-    }
-    processUrlAndStart(urlInput);
-  };
-
-  const handleScanSuccess = (scannedData) => {
-    processUrlAndStart(scannedData);
-  };
-
-  // Logic: Scan from Gallery
-  const handleGalleryScan = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (!window.jsQR) {
-      alert("Library Scanner belum siap. Mohon tunggu sebentar.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        context.drawImage(img, 0, 0);
-        
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = window.jsQR(imageData.data, imageData.width, imageData.height);
-
-        if (code && code.data) {
-          processUrlAndStart(code.data);
-        } else {
-          alert("QR Code tidak ditemukan dalam gambar ini.");
-        }
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Exambro Web App</title>
     
-    // Reset value supaya bisa pilih file sama lagi
-    event.target.value = null;
-  };
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- jsQR Library for Scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-  const handleExitClick = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.log("Audio play failed:", e));
-    }
-    setShowExitDialog(true);
-    setShowMenu(false);
-  };
+    <style>
+        /* Animasi Garis Scan */
+        @keyframes scan-line {
+            0% { transform: translateY(-100px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
+        }
+        .animate-scan {
+            animation: scan-line 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
 
-  const confirmExit = () => {
-    setShowExitDialog(false);
-    setCurrentScreen('home');
-    setUrlInput('');
-    setLoadError(false);
-    setShowMenu(false);
-    if (document.fullscreenElement) {
-        document.exitFullscreen().catch(err => console.log(err));
-    }
-  };
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-  return (
-    <div className="w-full h-full relative">
-      {currentScreen === 'home' && (
-        <HomeScreen 
-            urlInput={urlInput} 
-            setUrlInput={setUrlInput} 
-            handleStart={handleStart}
-            goToScan={() => setCurrentScreen('scan')}
-            onGalleryScan={handleGalleryScan}
-        />
-      )}
+        // --- ICONS (SVG Manual agar tidak perlu external lib) ---
+        const IconArrowRight = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
+        const IconCamera = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
+        const IconFileText = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>;
+        const IconMoreVertical = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>;
+        const IconAlertTriangle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+        const IconZap = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+        const IconArrowLeft = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>;
 
-      {currentScreen === 'scan' && (
-        <ScanScreen 
-            onBack={() => setCurrentScreen('home')} 
-            onScanSuccess={handleScanSuccess}
-            libLoaded={libLoaded}
-        />
-      )}
+        // --- DATA DEMO UJIAN (Untuk test tanpa domain asli) ---
+        const DEMO_EXAM_HTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <style>
+          body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+          .header { background: white; padding: 15px; border-bottom: 2px solid #49A773; margin-bottom: 20px; }
+          .soal { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          h2 { margin: 0; color: #333; }
+          .btn { display: inline-block; background: #49A773; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-top: 10px; }
+        </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>UJIAN SIMULASI</h2>
+            <p>Mode Demo Exambro</p>
+          </div>
+          <div class="soal">
+            <p><strong>Soal 1: Apakah aplikasi ini berjalan?</strong></p>
+            <input type="radio"> A. Tidak<br>
+            <input type="radio"> B. Ya, Berjalan Lancar<br>
+          </div>
+          <div class="soal">
+            <p><em>Klik tombol di bawah untuk simulasi kirim.</em></p>
+            <a href="#" class="btn" onclick="alert('Jawaban terkirim!')">KIRIM</a>
+          </div>
+        </body>
+        </html>
+        `;
 
-      {currentScreen === 'browser' && (
-        <div className="flex flex-col h-screen bg-gray-100 relative">
-            {showExitDialog && (
-                <ExitConfirmationModal onConfirm={confirmExit} onCancel={() => setShowExitDialog(false)} />
-            )}
+        // --- COMPONENTS ---
 
-            <header className="bg-[#49A773] h-14 flex items-center justify-between px-4 shadow-sm z-30 relative">
-                <div className="flex items-center">
-                    <span className="text-white text-lg font-medium tracking-wide">Exambro</span>
-                </div>
-                <div className="relative">
-                    <button onClick={() => setShowMenu(!showMenu)} className="text-white p-1 rounded-full hover:bg-white/10 transition-colors">
-                        <MoreVertical className="w-6 h-6" />
-                    </button>
-                    {showMenu && (
-                        <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white shadow-lg rounded-sm py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                            <button onClick={() => { alert("Exambro Web v2.0"); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 text-base">About</button>
-                            <button onClick={handleExitClick} className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 text-base">Exit</button>
+        // 1. HOME SCREEN
+        const HomeScreen = ({ urlInput, setUrlInput, handleStart, goToScan, onGalleryScan }) => {
+            const fileInputRef = useRef(null);
+            
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+                    <input type="file" ref={fileInputRef} onChange={onGalleryScan} accept="image/*" className="hidden" />
+                    
+                    <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-gray-200 to-transparent -z-10 opacity-50" style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                    }}></div>
+
+                    <div className="w-full max-w-md bg-white/90 backdrop-blur-sm p-6 rounded-lg shadow-sm z-10">
+                        <div className="mb-8 mt-10">
+                            <input
+                                type="text"
+                                value={urlInput}
+                                onChange={(e) => setUrlInput(e.target.value)}
+                                placeholder="Ketik 'demo' atau alamat server"
+                                autoComplete="off"
+                                className="w-full border-b border-gray-400 py-2 px-1 bg-transparent text-gray-800 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
                         </div>
-                        </>
+
+                        <div className="space-y-3">
+                            <button onClick={handleStart} className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95">
+                                <span className="flex items-center ml-4">LANJUTKAN</span>
+                                <IconArrowRight className="w-5 h-5 mr-2" />
+                            </button>
+                            <button onClick={goToScan} className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95">
+                                <span className="flex items-center text-sm uppercase ml-4">Scan QR Code Alamat Server</span>
+                                <IconCamera className="w-5 h-5 mr-2" />
+                            </button>
+                            <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="w-full bg-[#468295] hover:bg-[#366878] text-white font-medium py-3 px-4 rounded-full flex items-center justify-between shadow-md transition-all active:scale-95">
+                                <span className="flex items-center text-sm uppercase ml-4">Scan QR Code Dari Gallery</span>
+                                <IconFileText className="w-5 h-5 mr-2" />
+                            </button>
+                        </div>
+
+                        <div className="mt-12 border border-black p-4 text-sm text-gray-800 leading-relaxed font-medium">
+                            <p className="font-bold mb-1">Petunjuk :</p>
+                            <ol className="list-decimal pl-4 space-y-1">
+                                <li>Ketik <strong>demo</strong> untuk tes tanpa internet.</li>
+                                <li>Jangan menggunakan url yang dibuat pendek.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. ERROR VIEW
+        const ErrorView = ({ activeUrl }) => (
+            <div className="flex flex-col p-4 pt-8 bg-white h-full font-sans">
+                <div className="mb-4">
+                    <svg className="w-16 h-16 text-[#8ABD4C]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.5,12c-0.8,0-1.5,0.7-1.5,1.5S16.7,15,17.5,15S19,14.3,19,13.5S18.3,12,17.5,12z M6.5,12C5.7,12,5,12.7,5,13.5 S5.7,15,6.5,15S8,14.3,8,13.5S7.3,12,6.5,12z M19.6,7.5l1.6-2.8l-1.1-0.6l-1.7,2.8C16.8,6.3,14.5,6,12,6s-4.8,0.3-6.5,1L3.9,4.1 L2.8,4.7l1.6,2.8C2.5,8.8,1.2,10.8,1,13h22C22.8,10.8,21.5,8.8,19.6,7.5z"/>
+                    </svg>
+                </div>
+                <h1 className="text-2xl font-bold text-black mb-4">Halaman web tidak tersedia</h1>
+                <p className="text-gray-800 mb-6">
+                    Halaman web di <span className="font-bold">{activeUrl.substring(0, 50)}...</span> tidak dapat dimuat karena:
+                </p>
+                <p className="text-gray-600 text-sm uppercase font-medium">
+                    net::ERR_NAME_NOT_RESOLVED
+                </p>
+            </div>
+        );
+
+        // 3. SCAN SCREEN (Real Camera)
+        const ScanScreen = ({ onBack, onScanSuccess }) => {
+            const videoRef = useRef(null);
+            const canvasRef = useRef(null);
+            const [error, setError] = useState('');
+
+            useEffect(() => {
+                let stream = null;
+                let animationFrameId;
+
+                const startCamera = async () => {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                         setError("Browser tidak mendukung akses kamera atau tidak menggunakan HTTPS.");
+                         return;
+                    }
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                        if (videoRef.current) {
+                            videoRef.current.srcObject = stream;
+                            videoRef.current.setAttribute("playsinline", true);
+                            videoRef.current.play();
+                            requestAnimationFrame(tick);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        setError("Izin kamera ditolak.");
+                    }
+                };
+
+                const tick = () => {
+                    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                        const video = videoRef.current;
+                        const canvas = canvasRef.current;
+                        const context = canvas.getContext('2d');
+                        canvas.height = video.videoHeight;
+                        canvas.width = video.videoWidth;
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        // window.jsQR comes from global script
+                        if (window.jsQR) {
+                            const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+                            if (code && code.data) {
+                                if (stream) stream.getTracks().forEach(track => track.stop());
+                                onScanSuccess(code.data);
+                                return;
+                            }
+                        }
+                    }
+                    animationFrameId = requestAnimationFrame(tick);
+                };
+
+                startCamera();
+
+                return () => {
+                    if (stream) stream.getTracks().forEach(track => track.stop());
+                    cancelAnimationFrame(animationFrameId);
+                };
+            }, [onScanSuccess]);
+
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-between py-6">
+                    <div className="w-full flex justify-between px-4 z-20">
+                        <button onClick={onBack} className="text-white p-2"><IconArrowLeft className="w-6 h-6" /></button>
+                        <button className="bg-[#8ABD4C] rounded-full p-2"><IconZap className="w-5 h-5 text-white fill-current" /></button>
+                    </div>
+                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+                        {error ? (
+                            <div className="text-white text-center px-6">
+                                <IconAlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-2" />
+                                <p>{error}</p>
+                            </div>
+                        ) : (
+                            <>
+                                <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline></video>
+                                <canvas ref={canvasRef} className="hidden"></canvas>
+                                <div className="relative z-10 w-64 h-64 border-2 border-white/50 bg-transparent flex items-center justify-center overflow-hidden shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-[#8ABD4C]"></div>
+                                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-[#8ABD4C]"></div>
+                                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-[#8ABD4C]"></div>
+                                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-[#8ABD4C]"></div>
+                                    <div className="w-full h-[2px] bg-red-500 shadow-[0_0_4px_2px_rgba(255,0,0,0.5)] animate-scan"></div>
+                                    <div className="absolute right-4 top-1/2 w-1 h-1 bg-yellow-400 rounded-full opacity-70"></div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div className="relative z-20 mt-4"><p className="text-white text-sm tracking-wide">Memindai kode qr...</p></div>
+                </div>
+            );
+        };
+
+        // 4. EXIT MODAL
+        const ExitConfirmationModal = ({ onConfirm, onCancel }) => (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
+                    <div className="bg-[#49A773] px-4 py-3 flex items-center">
+                        <IconAlertTriangle className="text-white w-5 h-5 mr-2" />
+                        <h3 className="text-white font-semibold tracking-wide">Konfirmasi</h3>
+                    </div>
+                    <div className="p-6"><p className="text-gray-700 text-lg font-medium text-center">Apakah anda yakin ingin keluar dari ujian?</p></div>
+                    <div className="flex border-t border-gray-200">
+                        <button onClick={onCancel} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 transition-colors border-r border-gray-200">TIDAK</button>
+                        <button onClick={onConfirm} className="flex-1 py-3 text-[#49A773] font-bold hover:bg-green-50 transition-colors">YA</button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // --- MAIN APP ---
+        const ExambroApp = () => {
+            const [currentScreen, setCurrentScreen] = useState('home');
+            const [urlInput, setUrlInput] = useState('');
+            const [activeUrl, setActiveUrl] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [loadError, setLoadError] = useState(false);
+            const [showExitDialog, setShowExitDialog] = useState(false);
+            const [showMenu, setShowMenu] = useState(false);
+
+            const iframeRef = useRef(null);
+            const audioRef = useRef(null);
+
+            // Init Audio once
+            useEffect(() => {
+                audioRef.current = new Audio('https://files.catbox.moe/duh43x.m4a');
+            }, []);
+
+            // UNIFIED LOGIC
+            const processUrlAndStart = (rawUrl) => {
+                let cleanUrl = rawUrl.trim();
+                if (!cleanUrl) return;
+
+                let finalUrl = cleanUrl;
+                
+                // DEMO MODE CHECK
+                if (cleanUrl.toLowerCase() === 'demo') {
+                    // Use local html for demo
+                    finalUrl = `data:text/html;charset=utf-8,${encodeURIComponent(DEMO_EXAM_HTML)}`;
+                } else if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                    finalUrl = 'http://' + finalUrl;
+                }
+
+                setUrlInput(cleanUrl);
+                setActiveUrl(finalUrl);
+                setLoadError(false);
+                setIsLoading(true);
+
+                // Attempt Fullscreen
+                try {
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(e => console.warn("Fullscreen blocked", e));
+                    }
+                } catch (e) {}
+
+                setCurrentScreen('browser');
+
+                setTimeout(() => {
+                    setIsLoading(false);
+                    // Error logic only if NOT demo
+                    if (cleanUrl.toLowerCase() !== 'demo') {
+                         if (cleanUrl.includes('/r/') || cleanUrl.length < 4) setLoadError(true);
+                    }
+                }, 1500);
+            };
+
+            const handleGalleryScan = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                if (!window.jsQR) { alert("Scanner loading..."); return; }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width; canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = window.jsQR(imageData.data, imageData.width, imageData.height);
+                        if (code && code.data) processUrlAndStart(code.data);
+                        else alert("QR tidak terbaca.");
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                event.target.value = null;
+            };
+
+            const handleExitClick = () => {
+                if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.log(e));
+                }
+                setShowExitDialog(true);
+                setShowMenu(false);
+            };
+
+            const confirmExit = () => {
+                setShowExitDialog(false);
+                setCurrentScreen('home');
+                setUrlInput('');
+                setLoadError(false);
+                setShowMenu(false);
+                if (document.fullscreenElement) document.exitFullscreen().catch(e => {});
+            };
+
+            return (
+                <div className="w-full h-full relative">
+                    {currentScreen === 'home' && (
+                        <HomeScreen 
+                            urlInput={urlInput} setUrlInput={setUrlInput} 
+                            handleStart={() => {
+                                if(!urlInput.trim()) alert("Masukkan alamat."); else processUrlAndStart(urlInput);
+                            }}
+                            goToScan={() => setCurrentScreen('scan')}
+                            onGalleryScan={handleGalleryScan}
+                        />
+                    )}
+
+                    {currentScreen === 'scan' && (
+                        <ScanScreen onBack={() => setCurrentScreen('home')} onScanSuccess={processUrlAndStart} />
+                    )}
+
+                    {currentScreen === 'browser' && (
+                        <div className="flex flex-col h-screen bg-gray-100 relative">
+                            {showExitDialog && <ExitConfirmationModal onConfirm={confirmExit} onCancel={() => setShowExitDialog(false)} />}
+                            
+                            <header className="bg-[#49A773] h-14 flex items-center justify-between px-4 shadow-sm z-30 relative">
+                                <div className="flex items-center"><span className="text-white text-lg font-medium tracking-wide">Exambro</span></div>
+                                <div className="relative">
+                                    <button onClick={() => setShowMenu(!showMenu)} className="text-white p-1 rounded-full hover:bg-white/10 transition-colors"><IconMoreVertical className="w-6 h-6" /></button>
+                                    {showMenu && (
+                                        <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
+                                        <div className="absolute right-0 top-full mt-1 w-48 bg-white shadow-lg rounded-sm py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                            <button onClick={() => {alert("Exambro Web v2.1"); setShowMenu(false);}} className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 text-base">About</button>
+                                            <button onClick={handleExitClick} className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 text-base">Exit</button>
+                                        </div>
+                                        </>
+                                    )}
+                                </div>
+                            </header>
+
+                            <div className="flex-1 relative bg-white overflow-hidden z-0">
+                                {isLoading ? (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[#49A773]"></div>
+                                    </div>
+                                ) : loadError ? (
+                                    <ErrorView activeUrl={activeUrl} />
+                                ) : (
+                                    <iframe 
+                                        key={activeUrl}
+                                        ref={iframeRef}
+                                        src={activeUrl}
+                                        className="w-full h-full border-0"
+                                        title="Exam Browser"
+                                        sandbox="allow-same-origin allow-scripts allow-forms"
+                                        onError={() => setLoadError(true)}
+                                    />
+                                )}
+                            </div>
+
+                            <footer className="bg-[#49A773] h-12 flex items-center z-20">
+                                <button className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">BACK</span></button>
+                                <div className="w-[1px] h-6 bg-green-400/50"></div>
+                                <button onClick={handleExitClick} className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">EXIT</span></button>
+                                <div className="w-[1px] h-6 bg-green-400/50"></div>
+                                <button className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">FORWARD</span></button>
+                            </footer>
+                        </div>
                     )}
                 </div>
-            </header>
+            );
+        };
 
-            <div className="flex-1 relative bg-white overflow-hidden z-0">
-                {isLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white">
-                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[#49A773]"></div>
-                    </div>
-                ) : loadError ? (
-                    <ErrorView activeUrl={activeUrl} />
-                ) : (
-                    <iframe 
-                        key={activeUrl} // Force remount if URL changes
-                        ref={iframeRef}
-                        src={activeUrl}
-                        className="w-full h-full border-0"
-                        title="Exam Browser"
-                        sandbox="allow-same-origin allow-scripts allow-forms"
-                        onError={() => setLoadError(true)}
-                    />
-                )}
-            </div>
-
-            <footer className="bg-[#49A773] h-12 flex items-center z-20">
-                <button className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">BACK</span></button>
-                <div className="w-[1px] h-6 bg-green-400/50"></div>
-                <button onClick={handleExitClick} className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">EXIT</span></button>
-                <div className="w-[1px] h-6 bg-green-400/50"></div>
-                <button className="flex-1 flex items-center justify-center text-white h-full active:bg-[#3d8c60] transition-colors"><span className="font-medium tracking-wider text-sm">FORWARD</span></button>
-            </footer>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default ExambroApp;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ExambroApp />);
+    </script>
+</body>
+</html>
